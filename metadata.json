@@ -1,0 +1,6 @@
+{
+  "name": "Minimalist Photo Portfolio & Instagram Sync",
+  "description": "Un portfolio de fotografía minimalista que se sincroniza con Instagram, organiza con IA, permite curar colecciones, incluye formulario de contacto y respalda datos en Google Drive.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

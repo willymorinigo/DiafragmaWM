@@ -1,0 +1,154 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Catch-All Deny Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Helper Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner() {
+      return isVerifiedUser() && request.auth.token.email == "willymorinigo@gmail.com";
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Schema Verification Helpers ---
+
+    function isValidPhoto(data) {
+      return data.keys().hasAll(['id', 'title', 'url', 'category', 'isCurated', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 11
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.url is string && data.url.size() <= 2048
+        && data.category is string && data.category.size() <= 100
+        && data.isCurated is bool;
+    }
+
+    function isValidCollection(data) {
+      return data.keys().hasAll(['id', 'name', 'coverPhotoUrl', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 6
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.coverPhotoUrl is string && data.coverPhotoUrl.size() <= 2048;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['id', 'name', 'email', 'message', 'status', 'createdAt'])
+        && data.keys().size() == 6
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 150
+        && data.message is string && data.message.size() <= 5000
+        && data.status is string && (data.status == 'unread' || data.status == 'read' || data.status == 'replied');
+    }
+
+    function isValidSetting(data) {
+      return data.keys().hasAll(['id', 'ownerEmail'])
+        && data.keys().size() <= 10
+        && data.id is string && data.id.size() <= 128
+        && data.ownerEmail is string && data.ownerEmail.size() <= 150;
+    }
+
+    // --- Path Collection Matching and Rules Enforcements ---
+
+    // Connection testing collection
+    match /test/{testId} {
+      allow read: if true;
+    }
+
+    // Public Portfolio Photos - viewable by anyone, managed only by the verified owner.
+    match /photos/{photoId} {
+      allow read, get, list: if true;
+      
+      allow create: if isOwner() 
+        && isValidId(photoId)
+        && isValidPhoto(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwner()
+        && isValidId(photoId)
+        && isValidPhoto(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+
+      allow delete: if isOwner() && isValidId(photoId);
+    }
+
+    // Public Portfolio Curated Collections - viewable by anyone, managed only by owner.
+    match /collections/{collectionId} {
+      allow read, get, list: if true;
+
+      allow create: if isOwner()
+        && isValidId(collectionId)
+        && isValidCollection(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwner()
+        && isValidId(collectionId)
+        && isValidCollection(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+
+      allow delete: if isOwner() && isValidId(collectionId);
+    }
+
+    // Public Contact Message submissions - anyone can create, only the owner can read/manage.
+    match /messages/{messageId} {
+      allow create: if isValidId(messageId)
+        && isValidMessage(incoming())
+        && incoming().createdAt == request.time
+        && incoming().status == 'unread';
+
+      allow read, get, list, delete: if isOwner();
+
+      allow update: if isOwner()
+        && isValidId(messageId)
+        && isValidMessage(incoming())
+        && incoming().createdAt == existing().createdAt
+        && (
+          // Only allow status transitions or reply changes by admin
+          incoming().diff(existing()).affectedKeys().hasOnly(['status'])
+        );
+    }
+
+    // Private System Settings - read and write ONLY allowed by the portfolio owner.
+    match /settings/{settingId} {
+      allow read, get: if isOwner();
+
+      allow create: if isOwner()
+        && isValidId(settingId)
+        && isValidSetting(incoming());
+
+      allow update: if isOwner()
+        && isValidId(settingId)
+        && isValidSetting(incoming())
+        && (
+          incoming().diff(existing()).affectedKeys().hasAny(['instagramToken', 'instagramUsername', 'lastSyncTime', 'backupHistory'])
+        );
+
+      allow delete: if isOwner() && isValidId(settingId);
+    }
+  }
+}

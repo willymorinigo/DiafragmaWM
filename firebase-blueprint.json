@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Photo": {
+      "title": "Photo",
+      "description": "An artwork photograph, synced from physical files or Instagram API.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID" },
+        "instagramId": { "type": "string", "description": "Original Instagram Media ID if synced" },
+        "title": { "type": "string", "description": "Title of the photo" },
+        "caption": { "type": "string", "description": "Caption or original text from post" },
+        "url": { "type": "string", "description": "Image secure URL" },
+        "permalink": { "type": "string", "description": "Original permalink to the post" },
+        "category": { "type": "string", "description": "Assigned category for filtering" },
+        "isCurated": { "type": "boolean", "description": "Whether curated or highlighted" },
+        "collectionId": { "type": "string", "description": "Optional collection association" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Original upload date" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp in Firestore" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp in Firestore" }
+      },
+      "required": ["id", "title", "url", "category", "isCurated", "createdAt", "updatedAt"]
+    },
+    "Collection": {
+      "title": "Collection",
+      "description": "A curated manual group of photographs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID" },
+        "name": { "type": "string", "description": "Name of the collection" },
+        "description": { "type": "string", "description": "Curator's description of this collection" },
+        "coverPhotoUrl": { "type": "string", "description": "Featured photo URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "name", "coverPhotoUrl", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Contact form submissions from visitors.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID" },
+        "name": { "type": "string", "description": "Name of sender" },
+        "email": { "type": "string", "format": "email", "description": "Email of sender" },
+        "message": { "type": "string", "description": "Message content" },
+        "status": { "type": "string", "enum": ["unread", "read", "replied"], "description": "Read status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission/creation timestamp" }
+      },
+      "required": ["id", "name", "email", "message", "status", "createdAt"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "App configuration settings, such as tokens.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Setting ID (typically 'config')" },
+        "instagramToken": { "type": "string", "description": "Instagram access token (encrypted or server-stored)" },
+        "instagramUsername": { "type": "string", "description": "Synced Instagram User Name" },
+        "lastSyncTime": { "type": "string", "format": "date-time", "description": "Timestamp of the last Instagram sync" },
+        "backupHistory": { "type": "array", "description": "JSON serialized history list of backups" },
+        "ownerEmail": { "type": "string", "description": "Email address of the portfolio owner / admin" }
+      },
+      "required": ["id", "ownerEmail"]
+    }
+  },
+  "firestore": {
+    "/photos/{photoId}": {
+      "schema": "Photo",
+      "description": "Portfolios photographs collection"
+    },
+    "/collections/{collectionId}": {
+      "schema": "Collection",
+      "description": "Manually curated photography folders"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Contact submissions inbox"
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Secret keys, tokens, and general system flags"
+    }
+  }
+}
